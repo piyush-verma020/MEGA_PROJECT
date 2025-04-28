@@ -3,6 +3,7 @@ import speech_recognition as sr  # For speech recognition
 import webbrowser  # To open URLs in the default web browser
 import pyttsx3  # For text-to-speech conversion
 import time  # For adding delays
+import pywhatkit as kit
 
 # Initialize the recognizer and speech engine
 recognizer = sr.Recognizer()
@@ -82,8 +83,7 @@ def processCommand(c):
                 print("Recognizing...")
                 word = recognizer.recognize_google(audio)
                 speak(f"Searching {word} on YouTube")
-                search = "https://www.youtube.com/results?search_query=" + word.replace(" ", "+")
-                webbrowser.open(search)
+                kit.playonyt(word)  # <---This line will automatically search and play the first video on YouTube
                 break
             except sr.UnknownValueError:
                 speak("Sorry, I could not understand your speech.")
@@ -130,7 +130,7 @@ if __name__ == "__main__":
                 # If activation word "sunday" is detected
                 if "sunday" in word.lower():
                     speak("Yes, how can I help you?")
-                    speak("If you wish me to stop then say break")
+                    print("If you wish me to stop then say break")
                     command_audio = listen_for_command()
                     command = recognizer.recognize_google(command_audio)
                     print(f"Command: {command}")
