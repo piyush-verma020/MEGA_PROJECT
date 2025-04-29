@@ -3,41 +3,41 @@ import speech_recognition as sr  # For speech recognition
 import webbrowser  # To open URLs in the default web browser
 import pyttsx3  # For text-to-speech conversion
 import time  # For adding delays
-import pywhatkit as kit
+import requests  # For making HTTP requests (e.g., fetching news)
 
-# Initialize the recognizer and speech engine
+# Initialize the recognizer and text-to-speech engine
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
+newsApi = "YOUR_API_KEY"  # Your NewsAPI key
+# # Go to newsapi to get your own api key and then place them here
 
-# Define a class to store and manage the search query
+# Class to store and manage the search query
 class Search:
     def __init__(self):
         self.query = ""
 
-    # Getter for query
     @property
-    def word(self):
+    def word(self):  # Getter for query
         return self.query
 
-    # Setter for query
     @word.setter
-    def word(self, value):
+    def word(self, value):  # Setter for query
         self.query = value
 
 # Function to convert text to speech
 def speak(text):
-    engine.setProperty('rate', 130)  # Set speed of speech
-    engine.setProperty('volume', 1.0)  # Set volume
+    engine.setProperty('rate', 130)  # Set speech rate
+    engine.setProperty('volume', 1.0)  # Set volume to max
     voices = engine.getProperty('voices')
-    engine.setProperty('voice', voices[1].id)  # Select a voice (change index if needed)
+    engine.setProperty('voice', voices[1].id)  # Use female voice (index may vary)
     engine.say(text)
     engine.runAndWait()
 
-# Function to process voice commands
+# Function to handle user voice commands
 def processCommand(c):
-    c = c.lower()
+    c = c.lower()  # Convert command to lowercase for comparison
 
-    # If the command was to open Google
+    # Google search functionality
     if "open google" in c:
         while True:
             try:
@@ -55,26 +55,42 @@ def processCommand(c):
             except sr.RequestError:
                 speak("Sorry, my speech service is temporarily unavailable.")
             except Exception as e:
-                speak("An Error occurred. Please try again later.")
+                speak("An error occurred. Please try again later.")
                 print(f"Error during Google search: {e}")
                 break
 
-    # For openning LinkedIn
+    # Open LinkedIn
     elif "open linkedin" in c:
-        speak("Opening Linkedin")
+        speak("Opening LinkedIn")
         webbrowser.open("https://linkedin.com")
 
-    # For openning weather forecast
+    # Open weather forecast
     elif "today's weather" in c:
         speak("Opening 7 Day Weather Forecast on Google")
         webbrowser.open("https://www.google.com/search?q=today%27s+weather+forecast")
 
-    # For openning ChatGPT
+    # Fetch and read news headlines
+    elif "news" in c:                                    # # Newly added feature " News " allows the user to hear headlines via using the api keys
+        speak("Do you want me to read the headlines?")
+        r = requests.get(f"https://newsapi.org/v2/top-headlines?country=india&apiKey={newsApi}")
+        data = r.json()
+        audio = listen_for_command()
+        reply = recognizer.recognize_google(audio).lower()
+        if "yes" in reply:
+            articles = data.get("articles", [])
+            for i, article in enumerate(articles[:10], 1):  # Read top 10 headlines
+                title = article.get('title')
+                if title:
+                    speak(f"Headline {i}: {title}")
+        else:
+            speak("Okay, not reading the headlines.")
+
+    # Open ChatGPT
     elif "open chatgpt" in c:
-        speak("Opening Chatgpt")
+        speak("Opening ChatGPT")
         webbrowser.open("https://chatgpt.com")
 
-    # If the command was to open YouTube
+    # YouTube search functionality
     elif "open youtube" in c:
         while True:
             try:
@@ -83,38 +99,39 @@ def processCommand(c):
                 print("Recognizing...")
                 word = recognizer.recognize_google(audio)
                 speak(f"Searching {word} on YouTube")
-                kit.playonyt(word)  # <---This line will automatically search and play the first video on YouTube
+                search = "https://www.youtube.com/results?search_query=" + word.replace(" ", "+")
+                webbrowser.open(search)
                 break
             except sr.UnknownValueError:
                 speak("Sorry, I could not understand your speech.")
             except sr.RequestError:
                 speak("Sorry, my speech service is temporarily unavailable.")
             except Exception as e:
-                speak("An Error occurred. Please try again later.")
+                speak("An error occurred. Please try again later.")
                 print(f"Error during YouTube search: {e}")
                 break
 
-    # For openning Facebook
+    # Open Facebook
     elif "open facebook" in c:
         webbrowser.open("https://facebook.com")
 
-    # For openning Instagram
+    # Open Instagram
     elif "open instagram" in c:
         webbrowser.open("https://instagram.com")
 
-    # Handling unrecognized command
+    # Fallback for unrecognized command
     else:
         speak("Sorry, I didn't understand. Try again.")
 
-# Function to listen for a command using the microphone
+# Function to capture voice input from the user
 def listen_for_command():
     with sr.Microphone() as source:
         print("Sunday is listening...")
-        recognizer.adjust_for_ambient_noise(source)  # Adjust to ambient noise
-        audio = recognizer.listen(source, timeout=7, phrase_time_limit=7)  # Capture audio input
+        recognizer.adjust_for_ambient_noise(source)  # Calibrate for background noise
+        audio = recognizer.listen(source, timeout=7, phrase_time_limit=7)  # Listen with limits
     return audio
 
-# Main program loop
+# Main loop for the voice assistant
 if __name__ == "__main__":
     speak("BOOTING UP SUNDAY......")
     is_listening = False
@@ -127,35 +144,35 @@ if __name__ == "__main__":
                 word = recognizer.recognize_google(audio)
                 print(f"Sunday heard you say: {word}")
 
-                # If activation word "sunday" is detected
+                # If wake word "sunday" is detected
                 if "sunday" in word.lower():
                     speak("Yes, how can I help you?")
-                    print("If you wish me to stop then say break")
+                    speak("If you wish me to stop then say break")
                     command_audio = listen_for_command()
                     command = recognizer.recognize_google(command_audio)
                     print(f"Command: {command}")
                     processCommand(command)
 
-                # Stop the assistant if "break" is spoken
+                # Exit command
                 elif "break" in word.lower():
                     break
 
                 is_listening = False
 
-        # Handling unknown voice input
+        # Couldn't understand the input
         except sr.UnknownValueError:
             print("Couldn't understand the audio.")
             continue
 
-        # Handling issues with the recognition service
+        # Recognition service error
         except sr.RequestError as e:
             speak("Speech service is temporarily down. Retrying...")
             print(f"Speech service error: {e}")
             time.sleep(3)
             continue
 
-        # General exception handler
+        # General error handling
         except Exception as e:
             print(f"Error: {e}")
 
-        time.sleep(1)  # Brief pause before next listen loop starts
+        time.sleep(1)  # Short delay before next iteration
