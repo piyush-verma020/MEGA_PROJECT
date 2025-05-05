@@ -4,12 +4,12 @@ import webbrowser  # To open URLs in the default web browser
 import pyttsx3  # For text-to-speech conversion
 import time  # For adding delays
 import requests  # For making HTTP requests (e.g., fetching news)
+import openai
 
 # Initialize the recognizer and text-to-speech engine
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
-newsApi = "YOUR_API_KEY"  # Your NewsAPI key
-# # Go to newsapi to get your own api key and then place them here
+newsApi = "Your_Api_Key"  # Your NewsAPI key
 
 # Class to store and manage the search query
 class Search:
@@ -24,6 +24,19 @@ class Search:
     def word(self, value):  # Setter for query
         self.query = value
 
+def openai_process(command):
+    client = openai.OpenAI(api_key="Your_Api_Key")  # Replace with your actual key
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",  # or "gpt-3.5-turbo"
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "You are a virtual assistant named Sunday"},
+            {"role": "user", "content": command}
+        ]
+    )
+    return response.choices[0].message.conten
+
 # Function to convert text to speech
 def speak(text):
     engine.setProperty('rate', 130)  # Set speech rate
@@ -33,6 +46,7 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
+# Print the assistant's reply
 # Function to handle user voice commands
 def processCommand(c):
     c = c.lower()  # Convert command to lowercase for comparison
@@ -70,20 +84,18 @@ def processCommand(c):
         webbrowser.open("https://www.google.com/search?q=today%27s+weather+forecast")
 
     # Fetch and read news headlines
-    elif "news" in c:                                    # # Newly added feature " News " allows the user to hear headlines via using the api keys
-        speak("Do you want me to read the headlines?")
+    elif "news" in c:
+        speak("Reading out the top 10 headlines")
         r = requests.get(f"https://newsapi.org/v2/top-headlines?country=india&apiKey={newsApi}")
         data = r.json()
-        audio = listen_for_command()
-        reply = recognizer.recognize_google(audio).lower()
-        if "yes" in reply:
-            articles = data.get("articles", [])
-            for i, article in enumerate(articles[:10], 1):  # Read top 10 headlines
-                title = article.get('title')
-                if title:
-                    speak(f"Headline {i}: {title}")
-        else:
-            speak("Okay, not reading the headlines.")
+
+        articles = data.get("articles", [])
+        for i, article in enumerate(articles[:10], 1):  # Read top 10 headlines
+            title = article.get('title')
+            if title:
+                speak(f"Headline {i}: {title}")
+        
+        speak("Okay, not reading the headlines.")
 
     # Open ChatGPT
     elif "open chatgpt" in c:
@@ -121,7 +133,8 @@ def processCommand(c):
 
     # Fallback for unrecognized command
     else:
-        speak("Sorry, I didn't understand. Try again.")
+        output = openai_process(c)
+        speak(output)
 
 # Function to capture voice input from the user
 def listen_for_command():
